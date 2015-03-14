@@ -1,0 +1,575 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Swell - Federated Real-Time Collaboration - Collaborative List</title>
+
+	<!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.min.css">
+
+	<!-- Optional theme -->
+	<link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap-theme.min.css"> 	
+</head>
+<body>
+
+<!-- html -->
+
+<!-- Navbar, Status and Logout / Close Wave buttons -->
+<nav class="navbar navbar-default">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+    	<span class="navbar-brand" href="#">Swell - Collaborative List</span>
+    </div>
+
+	<!-- Messages, Logout and Close Form -->
+    <div class="navbar-right" style="margin-right:10px;">
+    	<p id="unsavedMsg" class="navbar-text" style="padding:2px; margin-right:10px;"></p>
+		<p id="statusMsg" class="navbar-text" style="padding:2px;"></p>
+    	<button id="waveLogoutBtn" type="button" class="btn btn-default navbar-btn hidden">Logout</button>
+    	<button id="closeWaveBtn" type="button" class="btn btn-default navbar-btn hidden">Close Wave</button>
+    </div>
+  </div>
+</nav>
+
+
+<div class="container">
+
+	<!-- Login Form -->
+	<div class="row hidden" id="waveLoginForm">
+		<div class="col-md-4 col-md-offset-4">
+			<form>
+			  <div class="form-group">
+			    <label for="waveServer">Wave Server URL</label>
+			    <input type="url" class="form-control" id="waveServer" placeholder="http://localhost:9898">
+			  </div>
+
+			  <div class="form-group">
+			    <label for="waveUsername">Username</label>
+			    <input type="text" class="form-control" id="waveUsername" placeholder="User name">
+			  </div>
+
+			  <div class="form-group">
+			    <label for="wavePassword">Password</label>
+			    <input type="password" class="form-control" id="wavePassword" placeholder="Password">
+			  </div>
+
+
+			  <button id="waveLoginBtn" type="button" class="btn btn-default">Login</button>			 
+			</form>
+		</div>
+	</div>
+
+	<!-- Open or Create Wave Content Form -->
+	<div class="row hidden" id="waveOpenForm">
+		<div class="col-md-4 col-md-offset-4">
+			<form>
+			  <div class="form-group">
+			    <label for="waveId">Wave Content Id</label>
+			    <input class="form-control" id="waveId" placeholder="Wave Id" required>
+			  </div>
+			  <button id="openWaveBtn" type="button" class="btn btn-default btn-block">Open Wave Content</button>
+			  <span class="help-block text-center"> OR </span>
+			  <button id="createWaveBtn" type="button" class="btn btn-default btn-block">Create New Wave Content</button>
+			</form>
+		</div>
+	</div>
+
+
+
+	<!-- Collaborative App -->
+	<div class="row hidden" id="wavePanel">
+
+		<div class="col-md-5 col-md-offset-1">
+
+			<h3>Participants</h3>
+
+			<!-- Participants Control -->	
+			<div class="row" style="margin-bottom:15px;">				
+				<div class="col-xs-12">				
+					<div class="input-group">
+						<input id="newParticipantInput" class="form-control" placeholder="Add new participant">
+						<span class="input-group-btn">
+							<button id="newParticipantBtn" type="button" class="btn btn-default btn-md">
+								<span class="glyphicon glyphicon-plus"></span>
+							</button> 
+						</span>
+					</div>
+				</div>	
+			</div>
+
+			<!-- Participants List -->
+			<div class="row">
+				<div class="col-md-12">
+					<div id="wave-participant-list" class="list-group wave-participant-list">
+					</div>
+				</div>
+			</div>
+
+		</div>
+
+		<div class="col-md-5">
+
+			<h3>List items</h3>
+			  
+			<!-- List Items Control -->
+			<div class="row" style="margin-bottom:15px;">				
+				<div class="col-xs-12">				
+					<div class="input-group">
+						<input id="newItemInput" class="form-control" placeholder="Add new item">
+						<span class="input-group-btn">
+							<button id="newItemBtn" type="button" class="btn btn-default btn-md">
+								<span class="glyphicon glyphicon-plus"></span>
+							</button> 
+						</span>
+					</div>
+				</div>	
+			</div>
+			
+
+
+			<!-- Item List -->
+			<div class="row">				
+				<div class="col-md-12">
+					<div id="wave-list" class="list-group wave-list">
+					</div>
+				</div>
+			</div>
+
+		</div>
+	</div>
+
+</div>
+
+
+
+<!-- Scripts -->
+<script src="bower_components/jquery/dist/jquery.min.js"></script>
+<script src="bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+<script src="http://localhost:9898/wavejs/wavejs.nocache.js"></script>
+<script>
+
+	
+// ---------------- WAVE LIFECYCLE ---------------------
+
+	var WAVE_STATUS;
+
+	function onWaveJSReady() {
+		setStatus("DISCONNECTED");
+	};	
+
+	function onWaveJSException(exception) {
+		setStatus("CONNECTED", exception);
+	}
+
+	function onWaveJSUpdate(inFlightSize, notAckedSize, unCommitedSize) {
+		if (unCommitedSize == 0 && notAckedSize == 0 && inFlightSize == 0 )
+			$("#unsavedMsg").html("All data has been saved");
+		else
+			$("#unsavedMsg").html("Sending data... ("+inFlightSize+"/"+notAckedSize+"/"+unCommitedSize+")");
+	}
+
+	function onWaveJSClose() {
+		setStatus("CONNECTED", "Wave Connection has been closed");
+	}
+
+	function setStatus(status, error) {
+
+		WAVE_STATUS = status;
+
+		if (status == "DISCONNECTED") {
+
+			$("#waveLoginForm").removeClass("hidden");
+			$("#waveOpenForm").addClass("hidden");
+			$("#waveLogoutBtn").addClass("hidden");
+			$("#closeWaveBtn").addClass("hidden");
+			$("#wavePanel").addClass("hidden");
+
+			if (error != null) {		
+				$("#statusMsg").removeClass("hidden");	
+				$("#statusMsg").removeClass("bg-info").addClass("bg-danger").html(error);				
+			}	
+			else {
+				$("#statusMsg").addClass("hidden");
+			}
+
+
+
+
+		} else if (status == "CONNECTED") {
+
+			$("#waveLoginForm").addClass("hidden");
+			$("#waveOpenForm").removeClass("hidden");
+			$("#waveLogoutBtn").removeClass("hidden");
+			$("#closeWaveBtn").addClass("hidden");
+			$("#wavePanel").addClass("hidden");
+
+			$("#statusMsg").removeClass("hidden");
+
+			$("#unsavedMsg").html("");
+
+			if (error != null) {			
+				$("#statusMsg").removeClass("bg-info").addClass("bg-danger").html(error);				
+			}	
+			else {
+				$("#statusMsg").addClass("bg-info").removeClass("bg-danger").html("Connected to Server");	
+			}
+
+
+		} else if (status == "OPENED") {
+
+			$("#waveLoginForm").addClass("hidden");
+			$("#waveOpenForm").addClass("hidden");
+			$("#waveLogoutBtn").removeClass("hidden");
+			$("#closeWaveBtn").removeClass("hidden");
+			$("#wavePanel").removeClass("hidden");
+
+			$("#statusMsg").removeClass("hidden");
+
+			$("#unsavedMsg").html("");
+
+			if (error != null) {			
+				$("#statusMsg").removeClass("bg-info").addClass("bg-danger").html(error);				
+			}	
+			else {
+				$("#statusMsg").addClass("bg-info").removeClass("bg-danger").html("Wave Content opened "+WaveJS.waveId);	
+			}
+
+		}
+
+	};
+
+
+	function doWaveLogin(event) {
+
+		var url = $("#waveServer").val();
+		var username = $("#waveUsername").val();
+		var password = $("#wavePassword").val();
+
+		try {
+
+			WaveJS.startSession(url, username, password , 
+
+				function(session) {
+					WaveJS.participantId = username;
+					setStatus("CONNECTED");
+				},
+				
+				function(error) {
+					setStatus("DISCONNECTED","Error connecting to Wave Server: "+error);	
+				});
+
+		} catch (exception) {
+			setStatus("DISCONNECTED","Error connecting to Wave Server: "+exception);
+		}
+
+	};
+
+
+
+	function doWaveCreate() {
+
+		try {
+
+		// Add new wave instance ID to the WaveJS object for convenience           
+		WaveJS.waveId =
+
+			WaveJS.createModel( 
+
+				function (wave) { 
+
+					// Add new wave instance to the WaveJS object for convenience               
+					WaveJS.wave = wave;
+
+					setStatus("OPENED");
+	
+					initParticipants();
+					initList(true);
+				},
+
+				function (error) {
+					WaveJS.waveId = null;
+					setStatus("CONNECTED","Error creating wave: "+error);					
+				});
+
+
+		} catch (exception) {
+			setStatus("CONNECTED","Error creating wave: "+exception);
+		}
+
+
+	};
+
+
+
+	function doWaveOpen(waveId) {
+
+		try {
+
+		// Add new waveId instance ID to the WaveJS object for convenience           
+		WaveJS.waveId = waveId;  
+		WaveJS.openModel(waveId,  
+
+			function (wave) { 
+
+				// Add opened model instance to the WaveJS object for convenience        				     
+				WaveJS.wave = wave;
+
+				setStatus("OPENED");
+
+				initParticipants();
+				initList(false);
+
+
+			},
+
+			function (error) {
+				WaveJS.waveId = null;
+				setStatus("CONNECTED","Error opening wave: "+error);					
+			});
+
+
+		} catch (exception) {		
+			setStatus("CONNECTED","Error opening wave: "+exception);
+		}
+
+
+	};
+
+
+
+	function doWaveClose() {
+
+		WaveJS.closeWave(WaveJS.waveId);
+		setStatus("CONNECTED");
+
+	};
+
+
+	function doWaveLogout() {
+
+		if (WAVE_STATUS == "OPENED") {
+			doWaveClose();
+		}
+
+		WaveJS.stopSession();
+		setStatus("DISCONNECTED")
+
+	};
+
+
+
+	// ---------------- LIST ---------------------
+
+
+	function initList(isNew) {
+
+		var list;
+
+		if (isNew) {
+			list = WaveJS.wave.createList();
+			WaveJS.wave.root.put("list",list);
+		} else {
+			 list = WaveJS.wave.root.get("list");
+		}
+
+		list.registerEventHandler(WaveJS.events.ITEM_ADDED, function(newValue) { onItemAdded(newValue); });
+		list.registerEventHandler(WaveJS.events.ITEM_REMOVED, function(index) { onItemRemoved(index); });
+
+		printList();
+	};
+
+
+	function onItemAdded(newValue) {
+		printList();
+	};
+
+	function onItemRemoved(index) {
+		printList();
+	};
+
+	function printList() {
+
+		// Remove all items first
+		$(".wave-list-item").remove();
+
+		// Print all items again
+		var list = WaveJS.wave.root.get("list");
+
+		for (i=0; i<list.size(); i++) {
+
+			var item = list.get(i);
+			var itemValue = item.getValue();
+
+
+			$(".wave-list").append("\
+				<span id='wave-list-item-"+i+"' class='wave-list-item list-group-item'>\
+				<span>"+itemValue+"</span>\
+			  		<button type='button' class='close pull-right' aria-label='Close' id='wave-list-item-"+i+"-btn'>\
+			  			<span aria-hidden='true'>x</span>\
+			  		</button>\
+			  	</span>");
+
+			$("#wave-list-item-"+i+"-btn").on("click", { itemIndex : i }, function(event) {
+				removeItem(event.data.itemIndex);
+			});
+		}
+
+	};
+
+
+	function addItem(item) {
+
+		try {
+			var list = WaveJS.wave.root.get("list");
+			list.add(WaveJS.wave.createString(item));
+			$("#newItemInput").val("");
+
+		} catch (exception) {			
+			doWaveClose();		
+			setStatus("CONNECTED","Wave Content Error: "+exception);
+		}
+
+	};
+
+
+	function removeItem(index) {
+
+		try {
+			var list = WaveJS.wave.root.get("list");
+			list.remove(index);
+
+		} catch (exception) {
+			doWaveClose();			
+			setStatus("CONNECTED","Wave Content Error: "+exception);
+		} 
+	};
+
+
+
+
+	// ---------------- PARTICIPANTS ---------------------
+
+
+	function initParticipants() {
+		WaveJS.wave.registerEventHandler(WaveJS.events.PARTICIPANT_ADDED, function(address) { onParticipantAdded(address); });
+		WaveJS.wave.registerEventHandler(WaveJS.events.PARTICIPANT_REMOVED, function(address) {  onParticipantRemoved(address); });
+		printParticipants();
+	};
+
+
+	function onParticipantAdded(participant) {
+		printParticipants();
+	};
+
+
+
+	function onParticipantRemoved(participant) {
+
+		if (WaveJS.participantId == participant)
+			setStatus("CONNECTED","You are not a participant anymore!");	
+		else 
+			printParticipants();
+	};
+
+
+	function printParticipants() {
+
+		// Remove all participants first
+		$(".wave-participant-item").remove();
+
+		// Print all participants again
+		var participants = WaveJS.wave.getParticipants();
+
+		for (i=0; i<participants.length; i++) {
+
+			var participant = participants[i];
+			var participantEscaped = participant.replace("@","-").replace("\.","-"); 
+
+
+			$(".wave-participant-list").append("\
+				<span id='wave-participant-item-"+participantEscaped+"' class='wave-participant-item list-group-item'>\
+				<span>"+participant+"</span>\
+			  		<button type='button' class='close pull-right' aria-label='Close' id='wave-participant-item-"+participantEscaped+"-btn'>\
+			  			<span aria-hidden='true'>x</span>\
+			  		</button>\
+			  	</span>");
+
+			$("#wave-participant-item-"+participantEscaped+"-btn").click({ value : participant }, function(event) {
+				removeParticipant(event.data.value);
+			});
+
+
+		}
+
+	};
+
+
+	function addParticipant(participant) {
+
+		try {
+			WaveJS.wave.addParticipant(participant);
+			$("#newParticipantInput").val("");
+
+		} catch (exception) {			
+			doWaveClose();
+			setStatus("CONNECTED","Wave Content Error: "+exception);
+		} 
+
+	};
+
+	function removeParticipant(participant) {
+
+		try {
+			if (confirm("Are you sure to remove "+participant+" as participant?"))
+				WaveJS.wave.removeParticipant(participant);
+
+		} catch (exception) {			
+			doWaveClose();
+			setStatus("CONNECTED","Wave Content Error: "+exception);
+		}
+	};
+
+
+	// Event binding
+
+	$(document).ready(function() {
+			
+		$("#waveLoginBtn").click(function(event) { 
+			window.doWaveLogin(event); 
+		});
+
+		$("#openWaveBtn").click(function(event) { 
+			window.doWaveOpen($("#waveId").val()); 
+		});
+
+		$("#createWaveBtn").click(function(event) { 
+			window.doWaveCreate(event); 
+		});
+
+
+		$("#waveLogoutBtn").click(function(event) { 
+			window.doWaveLogout(event); 
+		});		
+
+		$("#closeWaveBtn").click(function(event) { 
+			window.doWaveClose(event); 
+		});		
+
+		$("#newItemBtn").click(function(event) { 
+			window.addItem($("#newItemInput").val()); 
+		});	
+
+		$("#newParticipantBtn").click(function(event) { 
+			window.addParticipant($("#newParticipantInput").val()); 
+		});	
+
+	});
+
+</script>
+
+
+
+
+</body>
+</html>
