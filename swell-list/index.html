@@ -2,7 +2,7 @@
 <html>
 <head>
 	<meta charset="utf-8">
-	<title>Swell - Federated Real-Time Collaboration - Collaborative List</title>
+	<title>SwellRT - Federated Real-Time Collaboration - Collaborative List</title>
 
 	<!-- Latest compiled and minified CSS -->
 	<link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.min.css">
@@ -19,7 +19,7 @@
   <div class="container-fluid">
     <!-- Brand and toggle get grouped for better mobile display -->
     <div class="navbar-header">
-    	<span class="navbar-brand" href="#">Swell - Collaborative List</span>
+    	<span class="navbar-brand" href="#">SwellRT - Collaborative List</span>
     </div>
 
 	<!-- Messages, Logout and Close Form -->
@@ -137,16 +137,22 @@
 			</div>
 
 		</div>
+
 	</div>
 
-</div>
+	<div class="row" id="editor-panel">
+	</div>
+
+
+
+</div> <!-- container -->
 
 
 
 <!-- Scripts -->
 <script src="bower_components/jquery/dist/jquery.min.js"></script>
 <script src="bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
-<script src="http://localhost:9898/wavejs/wavejs.nocache.js"></script>
+<script src="https://wave.p2pvalue.eu/swellrt/swellrt.nocache.js"></script>
 <script>
 
 	
@@ -154,22 +160,22 @@
 
 	var WAVE_STATUS;
 
-	function onWaveJSReady() {
+	function onSwellRTReady() {
 		setStatus("DISCONNECTED");
 	};	
 
-	function onWaveJSException(exception) {
+	function onSwellRTException(exception) {
 		setStatus("CONNECTED", exception);
 	}
 
-	function onWaveJSUpdate(inFlightSize, notAckedSize, unCommitedSize) {
+	function onSwellRTUpdate(inFlightSize, notAckedSize, unCommitedSize) {
 		if (unCommitedSize == 0 && notAckedSize == 0 && inFlightSize == 0 )
 			$("#unsavedMsg").html("All data has been saved");
 		else
 			$("#unsavedMsg").html("Sending data... ("+inFlightSize+"/"+notAckedSize+"/"+unCommitedSize+")");
 	}
 
-	function onWaveJSClose() {
+	function onSwellRTClose() {
 		setStatus("CONNECTED", "Wave Connection has been closed");
 	}
 
@@ -232,7 +238,7 @@
 				$("#statusMsg").removeClass("bg-info").addClass("bg-danger").html(error);				
 			}	
 			else {
-				$("#statusMsg").addClass("bg-info").removeClass("bg-danger").html("Wave Content opened "+WaveJS.waveId);	
+				$("#statusMsg").addClass("bg-info").removeClass("bg-danger").html("Wave Content opened "+SwellRT.waveId);	
 			}
 
 		}
@@ -248,10 +254,10 @@
 
 		try {
 
-			WaveJS.startSession(url, username, password , 
+			SwellRT.startSession(url, username, password , 
 
 				function(session) {
-					WaveJS.participantId = username;
+					SwellRT.participantId = username;
 					setStatus("CONNECTED");
 				},
 				
@@ -271,15 +277,15 @@
 
 		try {
 
-		// Add new wave instance ID to the WaveJS object for convenience           
-		WaveJS.waveId =
+		// Add new wave instance ID to the SwellRT object for convenience           
+		SwellRT.waveId =
 
-			WaveJS.createModel( 
+			SwellRT.createModel( 
 
 				function (wave) { 
 
-					// Add new wave instance to the WaveJS object for convenience               
-					WaveJS.wave = wave;
+					// Add new wave instance to the SwellRT object for convenience               
+					SwellRT.wave = wave;
 
 					setStatus("OPENED");
 	
@@ -288,7 +294,7 @@
 				},
 
 				function (error) {
-					WaveJS.waveId = null;
+					SwellRT.waveId = null;
 					setStatus("CONNECTED","Error creating wave: "+error);					
 				});
 
@@ -306,14 +312,14 @@
 
 		try {
 
-		// Add new waveId instance ID to the WaveJS object for convenience           
-		WaveJS.waveId = waveId;  
-		WaveJS.openModel(waveId,  
+		// Add new waveId instance ID to the SwellRT object for convenience           
+		SwellRT.waveId = waveId;  
+		SwellRT.openModel(waveId,  
 
 			function (wave) { 
 
-				// Add opened model instance to the WaveJS object for convenience        				     
-				WaveJS.wave = wave;
+				// Add opened model instance to the SwellRT object for convenience        				     
+				SwellRT.wave = wave;
 
 				setStatus("OPENED");
 
@@ -324,7 +330,7 @@
 			},
 
 			function (error) {
-				WaveJS.waveId = null;
+				SwellRT.waveId = null;
 				setStatus("CONNECTED","Error opening wave: "+error);					
 			});
 
@@ -340,7 +346,7 @@
 
 	function doWaveClose() {
 
-		WaveJS.closeWave(WaveJS.waveId);
+		SwellRT.closeWave(SwellRT.waveId);
 		setStatus("CONNECTED");
 
 	};
@@ -352,7 +358,7 @@
 			doWaveClose();
 		}
 
-		WaveJS.stopSession();
+		SwellRT.stopSession();
 		setStatus("DISCONNECTED")
 
 	};
@@ -367,14 +373,17 @@
 		var list;
 
 		if (isNew) {
-			list = WaveJS.wave.createList();
-			WaveJS.wave.root.put("list",list);
+			list = SwellRT.wave.createList();
+			SwellRT.wave.root.put("list",list);
+			var str = SwellRT.wave.createString("Hello World");
+			list.add(str);
+			
 		} else {
-			 list = WaveJS.wave.root.get("list");
+			 list = SwellRT.wave.root.get("list");
 		}
 
-		list.registerEventHandler(WaveJS.events.ITEM_ADDED, function(newValue) { onItemAdded(newValue); });
-		list.registerEventHandler(WaveJS.events.ITEM_REMOVED, function(index) { onItemRemoved(index); });
+		list.registerEventHandler(SwellRT.events.ITEM_ADDED, function(newValue) { onItemAdded(newValue); });
+		list.registerEventHandler(SwellRT.events.ITEM_REMOVED, function(index) { onItemRemoved(index); });
 
 		printList();
 	};
@@ -394,7 +403,7 @@
 		$(".wave-list-item").remove();
 
 		// Print all items again
-		var list = WaveJS.wave.root.get("list");
+		var list = SwellRT.wave.root.get("list");
 
 		for (i=0; i<list.size(); i++) {
 
@@ -421,8 +430,8 @@
 	function addItem(item) {
 
 		try {
-			var list = WaveJS.wave.root.get("list");
-			list.add(WaveJS.wave.createString(item));
+			var list = SwellRT.wave.root.get("list");
+			list.add(SwellRT.wave.createString(item));
 			$("#newItemInput").val("");
 
 		} catch (exception) {			
@@ -436,7 +445,7 @@
 	function removeItem(index) {
 
 		try {
-			var list = WaveJS.wave.root.get("list");
+			var list = SwellRT.wave.root.get("list");
 			list.remove(index);
 
 		} catch (exception) {
@@ -452,8 +461,8 @@
 
 
 	function initParticipants() {
-		WaveJS.wave.registerEventHandler(WaveJS.events.PARTICIPANT_ADDED, function(address) { onParticipantAdded(address); });
-		WaveJS.wave.registerEventHandler(WaveJS.events.PARTICIPANT_REMOVED, function(address) {  onParticipantRemoved(address); });
+		SwellRT.wave.registerEventHandler(SwellRT.events.PARTICIPANT_ADDED, function(address) { onParticipantAdded(address); });
+		SwellRT.wave.registerEventHandler(SwellRT.events.PARTICIPANT_REMOVED, function(address) {  onParticipantRemoved(address); });
 		printParticipants();
 	};
 
@@ -466,7 +475,7 @@
 
 	function onParticipantRemoved(participant) {
 
-		if (WaveJS.participantId == participant)
+		if (SwellRT.participantId == participant)
 			setStatus("CONNECTED","You are not a participant anymore!");	
 		else 
 			printParticipants();
@@ -479,7 +488,7 @@
 		$(".wave-participant-item").remove();
 
 		// Print all participants again
-		var participants = WaveJS.wave.getParticipants();
+		var participants = SwellRT.wave.getParticipants();
 
 		for (i=0; i<participants.length; i++) {
 
@@ -508,7 +517,7 @@
 	function addParticipant(participant) {
 
 		try {
-			WaveJS.wave.addParticipant(participant);
+			SwellRT.wave.addParticipant(participant);
 			$("#newParticipantInput").val("");
 
 		} catch (exception) {			
@@ -522,7 +531,7 @@
 
 		try {
 			if (confirm("Are you sure to remove "+participant+" as participant?"))
-				WaveJS.wave.removeParticipant(participant);
+				SwellRT.wave.removeParticipant(participant);
 
 		} catch (exception) {			
 			doWaveClose();
